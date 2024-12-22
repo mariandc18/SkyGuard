@@ -1,6 +1,7 @@
 from kafka import KafkaProducer
 import json 
 import requests
+import time
 
 producer = KafkaProducer(
     bootstrap_servers=['localhost:9092'],
@@ -30,5 +31,7 @@ def send_to_kafka(data):
             print(f"Error al enviar los datos a Kafka: {e}")
             
 if __name__ == '__main__':
-    data = fetch_data()
-    send_to_kafka(data)
+    while True:
+        data = fetch_data()
+        send_to_kafka(data)
+        time.sleep(10)
