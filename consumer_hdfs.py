@@ -17,7 +17,7 @@ console = Console()
 layout = Layout()
 
 # Configuración de HDFS y Kafka
-HDFS_URL = 'http://hadoop-namenode:9870'
+HDFS_URL = 'http://172.26.0.4:9870'
 HDFS_DIR = '/user/data/Trafico_Aereo/'
 
 def setup_hdfs():
