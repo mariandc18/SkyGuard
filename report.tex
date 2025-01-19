@@ -2,9 +2,33 @@
 \usepackage{graphicx} 
 \usepackage{listings}
 \usepackage{xcolor}
+\usepackage{url}
+
+% Definición del estilo para Python
+\lstdefinestyle{python}{
+    language=Python,        
+    basicstyle=\ttfamily,    
+    keywordstyle=\color{blue},   
+    stringstyle=\color{red},     
+    commentstyle=\color{green}, 
+    morekeywords={self},    
+    breaklines=true,        
+    numbers=left,           
+    numberstyle=\tiny\color{gray}, 
+    captionpos=b           
+}
 
 \begin{document}
 \section{Introducción}
+Hoy en día, la cantidad de datos generados en un instante de tiempo muy pequeño es prácticamente innumerable, provenientes de múltiples fuentes. De esta forma surge lo que se conoce como \textit{Big Data}.
+El procesamiento y análisis de grandes volúmenes de datos de manera eficiente permite obtener información valiosa que optimiza procesos, predice tendencias y ofrece soluciones a problemas complejos, independientemente del ámbito de aplicación.
+
+De esta forma, una de las aplicaciones del Big Data radica en el análisis de datos referentes al tráfico aéreo. Este enfoque no solo permite el monitoreo en tiempo real de las operaciones aéreas, sino que también facilita el desarrollo de análisis más complejos. De esta manera, es posible predecir retrasos, identificar picos de actividad, detectar temporadas con mayor tráfico aéreo, etcétera.
+
+Debido a la relevancia y utilidad que tiene este tema, este proyecto tiene como objetivo desarrollar un sistema para la captura, análisis y almacenamiento de datos en tiempo real sobre el tráfico aéreo a nivel global. El sistema brindará información actualizada sobre las operaciones aéreas, posibles retrasos en los vuelos y condiciones meteorológicas que puedan afectar la trayectoria de las aeronaves.  
+
+Para ello, se emplearán tecnologías propias de BigData como Apache Kafka, Hadoop Distributed File System(HDFS), junto con Python y Docker para garantizar un entorno aislado y bien estructrurado que optimice la captura, el almacenamiento y el análisis de datos. 
+\newpage
 
 \section{Ingesta de datos}
 
@@ -20,10 +44,10 @@ Además permite acceder a un historial de vuelos hasta 30 días atrás, lo que e
 
 Es importante destacar que no proporciona datos comerciales de vuelo como horarios de aeropuertos, retrasos o información adicional que no pueda derivarse del contenido de los datos ADS-B.
 
-Para acceder a la API y a todos los vuelos en tiempo real se ha utilizado la url: \url{<https://opensky-network.org/api/states/all}>.
+Para acceder a la API y a todos los vuelos en tiempo real se ha utilizado la url: \url{https://opensky-network.org/api/states/all}.
 
 \subsection{Apache Kafka para la ingesta}
-\subsubsection{Qué es Apache Kafka?}
+\subsubsection{¿Qué es Apache Kafka?}
 
 Apache Kafka es una plataforma de transmisión distribuida diseñada para manejar flujos de datos en tiempo real de manera eficiente, escalable y confiable. Gracias a su arquitectura basada en discos y su enfoque en operaciones secuenciales, Kafka puede manejar millones de mensajes por segundo con una latencia extremadamente baja, lo que lo convierte en una solución ideal para aplicaciones de alto rendimiento.
 Tiene numerosos casos de uso, como la transmisión distribuida, el procesamiento de flujos, la integración de datos y la mensajería de publicación/suscripción.
@@ -40,7 +64,7 @@ Para comprender como funciona Apache Kafka es necesario comprender algunos conce
 
 Al dividir un registro en particiones, Kafka puede escalar horizontalmente los sistemas. Como tal, Kafka modela los eventos como pares clave-valor. Internamente, las claves y los valores son solo secuencias de bytes, pero externamente en el lenguaje de programación de elección, a menudo son objetos estructurados representados en el sistema de tipos de su lenguaje. Kafka llama a la traducción entre tipos de lenguaje y serialización y deserialización de bytes internos. El formato serializado suele ser JSON, JSON Schema, Avro o Protobuf.
 
-\subsubsection{ Por qué utilizarlo en este caso?}
+\subsubsection{¿Por qué utilizarlo en este caso?}
 
 En el caso del tráfico aéreo y el monitereo de aviones, estamos en presencia de datos altamente dinámicos, por lo que es necesario tener acceso en tiempo real al estado de cada una de las aeronaves en todo el mundo, y Kafka es una herramienta ideal para lograrlo.
 
@@ -65,7 +89,7 @@ Para el proceso de captura de datos se utilizó Apache Kafka junto con la biblio
 Se creó un archivo "producer.py" encargado de obtener los datos en tiempo real de la API  y enviarlos al clúster de Kafka.Estos datos se envían de forma continua a un topic en específico, para el cual se creó el tópic `Air\_Traffic`, permitiendo una ingesta constante y actualizada de información sobre el estado de los vuelos.
 Primero, se configura una instancia de KafkaProducer que se conecta al servidor de Kafka en localhost:9092. Este producer se encarga de serializar los datos en formato JSON antes de enviarlos. La configuración se realiza definiendo las propiedades de conexión y el serializador de valores.
 
-\begin{lstlisting}[language=Python]
+\begin{lstlisting}[style=python]
 from kafka import KafkaProducer
 import json
 
@@ -80,7 +104,7 @@ Una vez capturados, los datos se publican en el tema `Air\_Traffic` utilizando e
 
 Luego de implementar el producer, se configuró el consumer que será el encargado de suscribirse al topic creado y leer los mensajes en tiempo real. Una vez que el consumer se suscribe a "Air Traffic"(topic) este deserializa los datos recibidos en formato json, asegurando que sean legibles y puedan ser procesados de manera eficiente.
 
-\begin{lstlisting}[language=Python, caption={Configuración del KafkaConsumer}]
+\begin{lstlisting}[style=python]
 from kafka import KafkaConsumer
 import json
 
@@ -110,20 +134,20 @@ Cuando un cliente escribe un archivo, este se divide en bloques que se envían a
 \subsection{HDFS y Docker}
 
 Como en el caso de la ingesta, se utilizó Docker con HDFS para crear un entorno aislado, portable y escalable que facilite tanto el desarrollo como la implementación en distintos entornos.
-Luego se annadió al archivo `docker-compose.yml` mencionado anteriormente toda la configuración necesaria para gestionar los servicios y contenedores de HDFS.
+Luego se añadió al archivo `docker-compose.yml` mencionado anteriormente toda la configuración necesaria para gestionar los servicios y contenedores de HDFS.
 Cada uno de los servicios, como el NameNode y los DataNodes, se define como un contenedor independiente dentro del archivo Compose. Estos servicios se coordinan entre sí mediante una red interna, lo que permite la comunicación eficiente entre los nodos del clúster de HDFS.
 
 \subsection{Almacenamiento}
 
 Para el almacenamiento eficiente en HDFS se ha utilizado la biblioteca \textit{hdfs} de Python.
 
-Su configuración comienza estableciendo la conexión con el sistema de archivos distribuido mediante un cliente inseguro (`InsecureClient`). Este cliente se conecta a una URL de HDFS específica (`HDFS\_URL`) y realiza operaciones utilizando el usuario `root`.
+Su configuración comienza estableciendo la conexión con el sistema de archivos distribuido mediante un cliente inseguro (\textit{InsecureClient}). Este cliente se conecta a una URL de HDFS específica (\textit{HDFS\_URL}) y realiza operaciones utilizando el usuario `root`.
 
-Luego se verifica que el directorio designado para almacenar los datos en HDFS exista. Si el directorio no se encuentra presente, el sistema lo crea. Este proceso implica la verificación del directorio mediante una solicitud de estado (`client.status`). En caso de no existir, se crea el directorio y todos sus directorios padre necesarios (`client.makedirs`).
+Luego se verifica que el directorio designado para almacenar los datos en HDFS exista. Si el directorio no se encuentra presente, el sistema lo crea. Este proceso implica la verificación del directorio mediante una solicitud de estado (\textit{client.status}). En caso de no existir, se crea el directorio y todos sus directorios padre necesarios (\textit{client.makedirs}).
 
 Una vez configurada la conexión y verificados los permisos, los datos capturados en tiempo real desde Kafka se procesan y se guardan en archivos JSON dentro de HDFS. Cada mensaje recibido del tópico de Kafka se convierte en un archivo de datos que se guarda en el directorio previamente definido. Los archivos son nombrados de manera dinámica usando un timestamp, lo que asegura que cada archivo tenga un nombre único, facilitando la gestión de los mismos.
 
-Si la escritura es exitosa, se notifica al usuario mediante mensajes de consola. En caso de que HDFS no esté disponible o ocurra un error durante la escritura, los datos se guardan localmente en un directorio especificado (`LOCAL\_DIR`), asegurando que ningún dato se pierda incluso si HDFS no está accesible en ese momento.
+Si la escritura es exitosa, se notifica al usuario mediante mensajes de consola. En caso de que HDFS no esté disponible o ocurra un error durante la escritura, los datos se guardan localmente en un directorio especificado (\textit{LOCAL\_DIR}), asegurando que ningún dato se pierda incluso si HDFS no está accesible en ese momento.
 
 Es importante destacar que en caso de que la conexión con HDFS falle o si se presentan problemas durante la escritura, el sistema gestiona los errores y proporciona mensajes claros de lo que ha ocurrido, lo que permite una rápida identificación de problemas.
 
