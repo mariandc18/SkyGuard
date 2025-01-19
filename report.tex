@@ -3,8 +3,8 @@
 \usepackage{listings}
 \usepackage{xcolor}
 \usepackage{url}
+\usepackage{hyperref}
 
-% Definición del estilo para Python
 \lstdefinestyle{python}{
     language=Python,        
     basicstyle=\ttfamily,    
@@ -29,6 +29,9 @@
     \Large Enero, 2025
     \vfill
 \end{titlepage}
+\tableofcontents
+\newpage
+\setcounter{secnumdepth}{0}
 
 \section{Introducción}
 Hoy en día, la cantidad de datos generados en un instante de tiempo muy pequeño es prácticamente innumerable, provenientes de múltiples fuentes. De esta forma surge lo que se conoce como \textit{Big Data}.
@@ -60,7 +63,7 @@ Para acceder a la API y a todos los vuelos en tiempo real se ha utilizado la url
 \subsection{Apache Kafka para la ingesta}
 \subsubsection{¿Qué es Apache Kafka?}
 
-Apache Kafka es una plataforma de transmisión distribuida diseñada para manejar flujos de datos en tiempo real de manera eficiente, escalable y confiable. Gracias a su arquitectura basada en discos y su enfoque en operaciones secuenciales, Kafka puede manejar millones de mensajes por segundo con una latencia extremadamente baja, lo que lo convierte en una solución ideal para aplicaciones de alto rendimiento.
+Apache Kafka es una plataforma de transmisión distribuida diseñada para manejar flujos de datos en tiempo real de manera eficiente, escalable y confiable \cite{KafkaDocumentation}. Gracias a su arquitectura basada en discos y su enfoque en operaciones secuenciales, Kafka puede manejar millones de mensajes por segundo con una latencia extremadamente baja, lo que lo convierte en una solución ideal para aplicaciones de alto rendimiento.
 Tiene numerosos casos de uso, como la transmisión distribuida, el procesamiento de flujos, la integración de datos y la mensajería de publicación/suscripción.
 
 Para comprender como funciona Apache Kafka es necesario comprender algunos conceptos fundamentales:
@@ -95,9 +98,9 @@ Una vez configurado correctamente el archivo de configuración de Docker, y carg
 
 \subsection{Captura de los datos}
 
-Para el proceso de captura de datos se utilizó Apache Kafka junto con la biblioteca \textit{kafka-python}.
+Para el proceso de captura de datos se utilizó Apache Kafka junto con la biblioteca \textit{kafka-python} \cite{KafkaPython}.
 
-Se creó un archivo "producer.py" encargado de obtener los datos en tiempo real de la API  y enviarlos al clúster de Kafka.Estos datos se envían de forma continua a un topic en específico, para el cual se creó el tópic `Air\_Traffic`, permitiendo una ingesta constante y actualizada de información sobre el estado de los vuelos.
+Se creó un archivo "producer.py" encargado de obtener los datos en tiempo real de la API  y enviarlos al clúster de Kafka.Estos datos se envían de forma continua a un topic en específico, para el cual se creó el topic `Air\_Traffic`, permitiendo una ingesta constante y actualizada de información sobre el estado de los vuelos.
 Primero, se configura una instancia de KafkaProducer que se conecta al servidor de Kafka en localhost:9092. Este producer se encarga de serializar los datos en formato JSON antes de enviarlos. La configuración se realiza definiendo las propiedades de conexión y el serializador de valores.
 
 \begin{lstlisting}[style=python]
@@ -134,9 +137,9 @@ Además por su naturaleza desacoplada los productores no dependen de los consumi
 
 \subsection{Hadoop Distributed File System(HDFS)}
 
-HDFS es un sistema de archivos distribuido diseñado para almacenar grandes volúmenes de datos en un entorno distribuido y manejar de manera eficiente aplicaciones que requieren un procesamiento intensivo de datos.
+HDFS es un sistema de archivos distribuido diseñado para almacenar grandes volúmenes de datos en un entorno distribuido y manejar de manera eficiente aplicaciones que requieren un procesamiento intensivo de datos.\cite{HadoopHDFS}
 
-Utiliza una arquitectura distribuida que divide los datos en bloques de tamaño fijo y los distribuye entre varios nodos en un clúster. Una de sus característica más importante es su  tolerancia a fallos, ya que cada bloque de datos se replica en múltiples nodos para garantizar la disponibilidad de los datos incluso si uno o varios nodos fallan. Por defecto, cada bloque tiene tres réplicas, aunque este número es configurable según las necesidades del sistema.
+Utiliza una arquitectura distribuida que divide los datos en bloques de tamaño fijo y los distribuye entre varios nodos en un clúster. Una de sus características más importante es su  tolerancia a fallos, ya que cada bloque de datos se replica en múltiples nodos para garantizar la disponibilidad de los datos incluso si uno o varios nodos fallan. Por defecto, cada bloque tiene tres réplicas, aunque este número es configurable según las necesidades del sistema.
 
 La arquitectura de HDFS sigue un modelo maestro-esclavo compuesto por el Namenode, que actúa como maestro, y los Datanodes, que son los nodos esclavos. El Namenode administra el sistema de archivos, gestionando metadatos como la estructura de directorios, la ubicación de los bloques y las políticas de replicación, mientras que los Datanodes almacenan físicamente los bloques de datos y ejecutan las operaciones de lectura y escritura según las instrucciones del Namenode.
 
@@ -166,7 +169,7 @@ Es importante destacar que en caso de que la conexión con HDFS falle o si se pr
 
 Al trabajar con datos en streaming es fundamental tener sistema robusto de monitoreo que permita saber en cada momento el estado actual del clúster.
 
-En este caso, se utilizó la biblioteca `Rich` para crear una interfaz interactiva en la terminal que facilita la visualización del flujo de datos y el estado del sistema.
+En este caso, se utilizó la biblioteca \textit{rich} para crear una interfaz interactiva en la terminal que facilita la visualización del flujo de datos y el estado del sistema.
 Se muestra en tiempo real el estado del procesamiento y almacenamiento de los datos. A medida que los datos se reciben desde Kafka, la aplicación actualiza una tabla en la terminal con información relevante como el \textit{timestamp} de cada mensaje procesado y el archivo guardado. La interfaz también hace uso de colores y estilos para mejorar la legibilidad de los datos, permitiendo una rápida identificación de los eventos importantes.
 
 \begin{figure}[h]
@@ -183,9 +186,34 @@ En paralelo a la monitorización en la terminal, el sistema también está respa
 \end{figure}
 
 Además, la web de Hadoop ofrece detalles sobre el uso del espacio de almacenamiento en HDFS, lo que permite monitorear el crecimiento de los datos y evitar posibles cuellos de botella. Otra característica importante de la interfaz web es la capacidad de visualizar estadísticas sobre el rendimiento del sistema, como la latencia de las operaciones de lectura y escritura y el número de operaciones completadas por segundo.
+Si ocurre algún problema en el clúster, la interfaz web de Hadoop muestra alertas y notificaciones, lo que permite a los administradores identificar rápidamente los problemas y tomar las acciones necesarias para resolverlos.
 
-Además, si ocurre algún problema en el clúster, la interfaz web de Hadoop muestra alertas y notificaciones, lo que permite a los administradores identificar rápidamente los problemas y tomar las acciones necesarias para resolverlos.
+\newpage
 
+\begin{thebibliography}{9}
 
+\bibitem{Schaefer2014}
+Matthias Schäfer, Martin Strohmeier, Vincent Lenders, Ivan Martinovic, and Matthias Wilhelm.
+\textit{Bringing Up OpenSky: A Large-scale ADS-B Sensor Network for Research}.
+In Proceedings of the 13th IEEE/ACM International Symposium on Information Processing in Sensor Networks (IPSN), pages 83--94, April 2014.
+\bibitem{KafkaDocumentation}
+Apache Kafka.
+\textit{Apache Kafka Documentation}.
+Available at: \url{https://kafka.apache.org/documentation/}.
+Accessed: December 2024.
+
+\bibitem{HadoopHDFS}
+Apache Hadoop.
+\textit{HDFS User Guide}.
+Available at: \url{https://hadoop.apache.org/docs/stable/hadoop-project-dist/hadoop-hdfs/HdfsUserGuide.html}.
+Accessed: January 2025.
+
+\bibitem{KafkaPython}
+Kafka Python.
+\textit{Kafka-Python Documentation}.
+Available at: \url{https://kafka-python.readthedocs.io/en/master/}.
+Accessed: December 2024.
+
+\end{thebibliography}
 
 \end{document}
