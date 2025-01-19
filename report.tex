@@ -19,6 +19,17 @@
 }
 
 \begin{document}
+\begin{titlepage}
+    \centering
+    \vfill
+    \Huge Monitoreo del Tráfico Aéreo: Análisis en Tiempo Real\\[1cm]
+    \includegraphics[width=0.9\textwidth]{presentation.jpg}  
+    \vfill
+    \Large Autores: \\Marian Aguilar Tavier. \\  Jennifer de la C. Sánchez. \\[1cm]
+    \Large Enero, 2025
+    \vfill
+\end{titlepage}
+
 \section{Introducción}
 Hoy en día, la cantidad de datos generados en un instante de tiempo muy pequeño es prácticamente innumerable, provenientes de múltiples fuentes. De esta forma surge lo que se conoce como \textit{Big Data}.
 El procesamiento y análisis de grandes volúmenes de datos de manera eficiente permite obtener información valiosa que optimiza procesos, predice tendencias y ofrece soluciones a problemas complejos, independientemente del ámbito de aplicación.
@@ -158,10 +169,20 @@ Al trabajar con datos en streaming es fundamental tener sistema robusto de monit
 En este caso, se utilizó la biblioteca `Rich` para crear una interfaz interactiva en la terminal que facilita la visualización del flujo de datos y el estado del sistema.
 Se muestra en tiempo real el estado del procesamiento y almacenamiento de los datos. A medida que los datos se reciben desde Kafka, la aplicación actualiza una tabla en la terminal con información relevante como el \textit{timestamp} de cada mensaje procesado y el archivo guardado. La interfaz también hace uso de colores y estilos para mejorar la legibilidad de los datos, permitiendo una rápida identificación de los eventos importantes.
 
-En paralelo a la monitorización en la terminal, el sistema también está respaldado por la web de Hadoop, que ofrece una visión detallada del estado del clúster HDFS. A través de esta interfaz web, se puede obtener información crítica sobre el estado general del sistema de archivos distribuido. La web proporciona métricas clave sobre el estado del clúster, como la cantidad de nodos activos y la distribución del almacenamiento entre los DataNodes. Esto permite a los administradores del sistema asegurarse de que todos los componentes del clúster están operando correctamente y que hay suficiente capacidad de almacenamiento disponible para manejar el volumen de datos generado.
-Además, la web de Hadoop ofrece detalles sobre el uso del espacio de almacenamiento en HDFS, lo que permite monitorear el crecimiento de los datos y evitar posibles cuellos de botella.
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\textwidth]{terminal_output.jpg}
+    \caption{Salida en consola}
+\end{figure}
 
-Otra característica importante de la interfaz web es la capacidad de visualizar estadísticas sobre el rendimiento del sistema, como la latencia de las operaciones de lectura y escritura y el número de operaciones completadas por segundo.
+En paralelo a la monitorización en la terminal, el sistema también está respaldado por la web de Hadoop, que ofrece una visión detallada del estado del clúster HDFS. A través de esta interfaz web, se puede obtener información crítica sobre el estado general del sistema de archivos distribuido. La web proporciona métricas clave sobre el estado del clúster, como la cantidad de nodos activos y la distribución del almacenamiento entre los DataNodes. Esto permite a los administradores del sistema asegurarse de que todos los componentes del clúster están operando correctamente y que hay suficiente capacidad de almacenamiento disponible para manejar el volumen de datos generado.
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.9\textwidth]{HDFS_web.jpg}
+    \caption{Web de hadoop}
+\end{figure}
+
+Además, la web de Hadoop ofrece detalles sobre el uso del espacio de almacenamiento en HDFS, lo que permite monitorear el crecimiento de los datos y evitar posibles cuellos de botella. Otra característica importante de la interfaz web es la capacidad de visualizar estadísticas sobre el rendimiento del sistema, como la latencia de las operaciones de lectura y escritura y el número de operaciones completadas por segundo.
 
 Además, si ocurre algún problema en el clúster, la interfaz web de Hadoop muestra alertas y notificaciones, lo que permite a los administradores identificar rápidamente los problemas y tomar las acciones necesarias para resolverlos.
 
