@@ -38,3 +38,5 @@ producer:
 	python producer.py --string HELLO --topic light_bulb
 consumer:
 	python consumer_hdfs.py
+model_api:
+    python3 -m uvicorn api:app --host 0.0.0.0 --port 8000 --reload
