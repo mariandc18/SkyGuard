@@ -35,8 +35,8 @@ clean:
 	docker rm -f namenode bash
 	docker rm -f datanode bash
 producer:
-	python producer.py --string HELLO --topic light_bulb
+	python scripts/producer.py --string HELLO --topic light_bulb
 consumer:
-	python consumer_hdfs.py
+	python scripts/consumer_elastic.py
 model_api:
-    python3 -m uvicorn api:app --host 0.0.0.0 --port 8000 --reload
+    python3 -m uvicorn scripts/api:app --host 0.0.0.0 --port 8000 --reload

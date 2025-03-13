@@ -6,7 +6,7 @@ import numpy as np
 app = FastAPI()
 
 # Cargar el modelo guardado
-modelo = joblib.load("./modelo/modelo_xgboost.pkl")
+modelo = joblib.load("../model/modelo_xgboost.pkl")
 
 # Definir un esquema para la entrada
 class InputData(BaseModel):
