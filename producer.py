@@ -1,122 +1,65 @@
-from kafka import KafkaProducer
+from confluent_kafka import Producer
 import json
 import requests
 import time
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timedelta
 
-# Configuración de Kafka
-producer = KafkaProducer(
-    bootstrap_servers=['0.0.0.0:9092'],
-    value_serializer=lambda x: json.dumps(x).encode('utf-8')
-)
+# Configuración del productor de Confluent Kafka
+producer_config = {
+    'bootstrap.servers': 'localhost:9092',
+    'client.id': 'air_traffic_producer'
+}
+producer = Producer(producer_config)
 
-# URLs de la API de OpenSky
 API_URL_STATE_VECTORS = 'https://opensky-network.org/api/states/all'
 API_URL_FLIGHTS = 'https://opensky-network.org/api/flights/all'
 
 
 def fetch_data():
-    """Obtiene los datos de vectores de estado de la API de OpenSky."""
+    """Obtiene datos de tráfico aéreo y vuelos desde OpenSky Network."""
     try:
-        response = requests.get(API_URL_STATE_VECTORS)
-        if response.status_code == 200:
-            return response.json()
-        else:
-            print(f"Error al obtener datos de estado: {response.status_code}")
-            return None
-    except Exception as e:
-        print(f'Error al obtener vectores de estado: {e}')
-        return None
-
-MAX_BATCH_SIZE = 3000  # Cantidad máxima de estados por mensaje
-
-def fetch_all_flight_data(start_time, end_time):
-    """Obtiene todos los vuelos en un rango de tiempo."""
-    url = f'{API_URL_FLIGHTS}?begin={start_time}&end={end_time}'
-    try:
-        response = requests.get(url)
-        if response.status_code == 200:
-            return response.json()
-        else:
-            print(f"Error {response.status_code} al obtener vuelos: {response.text}")
-            return None
-    except Exception as e:
-        print(f'Error al obtener datos de vuelos: {e}')
-        return None
-
-
-
-def send_to_kafka(data, topic):
-    """Envía los datos a Kafka en el tópico especificado."""
-    if data is None:
-        print(f"[WARNING] No hay datos para enviar al tópico '{topic}'")
-        return
-
-    try:
-        # Si los datos son de estados y son demasiado grandes, dividirlos
-        if topic == 'Air_Traffic_States' and "states" in data:
-            total_states = len(data["states"])
-            print(f"[INFO] Enviando {total_states} estados en lotes de {MAX_BATCH_SIZE}")
-
-            for i in range(0, total_states, MAX_BATCH_SIZE):
-                batch = {
-                    "time": data["time"],
-                    "states": data["states"][i:i + MAX_BATCH_SIZE]
-                }
-                producer.send(topic, value=batch)
-                producer.flush()
-
-            print(f"[INFO] Todos los estados enviados en {total_states // MAX_BATCH_SIZE + 1} lotes.")
-
-        else:
-            # Enviar toda la lista como un solo mensaje JSON
-            producer.send(topic, value=data)
-            producer.flush()
-            print(f"[INFO] Datos enviados al tópico '{topic}' exitosamente.")
-
-    except Exception as e:
-        print(f"[ERROR] No se pudo enviar datos a Kafka: {e}")
-
-
-
-def fetch_and_send_parallel(a):
-    """Obtiene datos de ambas APIs en paralelo y los envía a Kafka."""
-    start=int(time.time())
-    while True:
-        # Definir el rango de tiempo de los últimos 10 minutos
-        end_time = int(time.time())
-        start_time = end_time - 7200 
-        with ThreadPoolExecutor(max_workers=3) as executor:
-            # Obtener los datos en paralelo
-            if a:
-                future_flights_recent = executor.submit(fetch_all_flight_data, start_time, end_time)
-                flights_recent = future_flights_recent.result()
-                a=False
-                if flights_recent:
-                    executor.submit(send_to_kafka, flights_recent, 'Air_Traffic_Flights')
-            elif start+7200<=end_time:
-                future_flights_recent = executor.submit(fetch_all_flight_data, start_time, end_time)
-                flights_recent = future_flights_recent.result()
-                if flights_recent:
-                    executor.submit(send_to_kafka, flights_recent, 'Air_Traffic_Flights')
-            future_states = executor.submit(fetch_data)
-            states = future_states.result()
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            future_states = executor.submit(requests.get, API_URL_STATE_VECTORS)
+            future_flights = executor.submit(requests.get, API_URL_FLIGHTS, {"begin": int(time.time()) - 7200, "end": int(time.time())})
             
-            # Enviar los datos a Kafka
-            if states:
-                executor.submit(send_to_kafka, states, 'Air_Traffic_States')
+            response_states = future_states.result()
+            response_flights = future_flights.result()
+            
+            if response_states.status_code == 200 and response_flights.status_code == 200:
+                return response_states.json(), response_flights.json()
+            else:
+                print(f"[ERROR] Estado {response_states.status_code} o {response_flights.status_code} al obtener datos")
+    except Exception as e:
+        print(f"[ERROR] Error al obtener datos: {e}")
+    return None, None
 
-        # Espera 10 segundos antes de la siguiente iteración
-        time.sleep(10)
+
+def send_to_kafka(states_data, flights_data, topic='Air_Traffic'):
+    """Envía los datos de tráfico aéreo y vuelos a Kafka."""
+    if not states_data or "states" not in states_data:
+        print(f"[WARNING] No hay datos de estado para enviar al tópico '{topic}'")
+        return
+    
+    flights_dict = {vuelo.get("icao24"): vuelo for vuelo in flights_data} if flights_data else {}
+    
+    for state in states_data["states"]:
+        flight_info = flights_dict.get(state[0], {})
+        state.extend([
+            flight_info.get("firstSeen"),
+            flight_info.get("lastSeen"),
+            flight_info.get("estDepartureAirport"),
+            flight_info.get("estArrivalAirport")
+        ])
+        message = json.dumps(state).encode('utf-8')
+        producer.produce(topic, value=message)
+    
+    producer.flush()
+    print("[INFO] Datos enviados a Kafka exitosamente")
 
 
 if __name__ == '__main__':
-    # Permitir al usuario ingresar una fecha específica
-    try:
-            a=True
-            fetch_and_send_parallel(a)
-    except ValueError:
-            print("Formato de fecha inválido. Se ejecutará sin fecha específica.")
-            fetch_and_send_parallel()
-
+    while True:
+        states, flights = fetch_data()
+        if states:
+            send_to_kafka(states, flights)
+        time.sleep(10)
