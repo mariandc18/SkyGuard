@@ -22,6 +22,9 @@ if not es.indices.exists(index=INDEX_NAME):
             "properties": {
                 "location": {
                     "type": "geo_point"
+                },
+                "delay": {
+                    "type": "integer"
                 }
             }
         }
@@ -75,10 +78,11 @@ def save_data(data, timestamp):
 def send_to_elasticsearch(data):
     """Envía datos a Elasticsearch"""
     if isinstance(data, list):  # Ahora cada mensaje es una lista de un vuelo individual
-        flight = data  # `data` ya es la lista con la información del vuelo
+        flight = data 
         if len(flight) >= 6:
             latitude = flight[6]
             longitude = flight[5]
+            delay = flight[-1] 
 
             if latitude is None or longitude is None:
                 console.print(f"[red]Latitude or Longitude is None, skipping this flight[/red]")
@@ -109,7 +113,7 @@ def send_to_elasticsearch(data):
                 "lastSeen": flight[13],
                 "estDepartureAirport": flight[14],
                 "estArrivalAirport": flight[15],
-                
+                "delay": delay,  
                 "timestamp": datetime.now(timezone.utc).isoformat()
             }
             es.index(index=INDEX_NAME, body=doc)
@@ -117,9 +121,7 @@ def send_to_elasticsearch(data):
         console.print(f"[red]Formato inesperado del mensaje recibido[/red]")
 
 
-
 def process_message(msg):
-    """Procesa cada mensaje recibido"""
     try:
         data = json.loads(msg.value().decode('utf-8'))
         timestamp = int(time.time())
@@ -135,7 +137,6 @@ def process_message(msg):
         console.print(f"[red]Error procesando mensaje: {e}[/red]")
 
 def signal_handler(sig, frame):
-    """Maneja la señal de interrupción"""
     console.print("\n[red]Interrupción detectada. Cerrando consumidor...[/red]")
     consumer.close()
     sys.exit(0)
