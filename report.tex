@@ -26,7 +26,7 @@
     \includegraphics[width=0.9\textwidth]{presentation.jpg}  
     \vfill
     \Large Autores: \\Marian Aguilar Tavier. \\  Jennifer de la C. Sánchez. \\[1cm]
-    \Large Enero, 2025
+    \Large Febrero, 2025
     \vfill
 \end{titlepage}
 \tableofcontents
@@ -188,6 +188,97 @@ En paralelo a la monitorización en la terminal, el sistema también está respa
 Además, la web de Hadoop ofrece detalles sobre el uso del espacio de almacenamiento en HDFS, lo que permite monitorear el crecimiento de los datos y evitar posibles cuellos de botella. Otra característica importante de la interfaz web es la capacidad de visualizar estadísticas sobre el rendimiento del sistema, como la latencia de las operaciones de lectura y escritura y el número de operaciones completadas por segundo.
 Si ocurre algún problema en el clúster, la interfaz web de Hadoop muestra alertas y notificaciones, lo que permite a los administradores identificar rápidamente los problemas y tomar las acciones necesarias para resolverlos.
 
+\section{Visualización y análisis en tiempo real}
+
+Aunque se ha utilizado el sistema de archivos distribuidos de Hadoop para almacenar los diferentes estados de cada uno de los vuelos, hay que tener en cuenta que esta herramienta no es útil cuando se quiere acceder a los datos en tiempo real. 
+
+A pessr de que HDFS es una excelente opción para almacenar grandes volúmenes de datos de manera distribuida y escalable, su estructura y funcionalidades están más orientadas al procesamiento por lotes y no son tan eficientes para consultas interactivas o en tiempo real. Por lo que se utilizará HDFS para poder realizar análisis teniendo en cuenta el transcurso del tiempo y para la visualización en tiempo real se utilizará otra herramienta, que será descrita a continuación. 
+
+\subsection{Elasticsearch}
+Elasticsearch es una plataforma de búsqueda y análisis de datos en tiempo real, basada en Apache Lucene \cite{Elasticsearch}. Está diseñada para ser escalable y distribuida, lo que permite gestionar grandes volúmenes de datos de manera eficiente, distribuyéndolos a través de múltiples nodos para mejorar el rendimiento y la fiabilidad.
+
+Utiliza una estructura de datos llamada "índice invertido", donde los datos se organizan en índices, que son colecciones de documentos relacionados. Un índice es similar a una base de datos tradicional, pero optimizado para realizar búsquedas rápidas y eficientes.
+En lugar de almacenar los datos en tablas, como en las bases de datos relacionales, Elasticsearch guarda la información en documentos en formato JSON. Es especialmente útil en aplicaciones donde es necesario realizar búsquedas complejas y análisis sobre conjuntos de datos en constante cambio
+
+Para poder desplegar Elasticsearch, de conjunto con Kafka y los demás servicios, se añadió el mismo al archivo de configuración de Docker. 
+
+\subsection{Kibana}
+
+Kibana es una herramienta de visualización de datos que trabaja en conjunto con ElasticSearch \cite{Kibana}. Su función principal es permitir a los usuarios explorar, visualizar y compartir datos indexados en ElasticSearch de manera intuitiva y gráfica.
+
+Toma los datos de ElasticSearch y permite representarlos en diferentes formatos visuales, como gráficos de líneas, gráficos de barras, gráficos circulares y tablas. Además, ofrece un panel interactivo donde los usuarios pueden construir y personalizar sus visualizaciones según sus necesidades específicas.
+
+Una de las capacidades destacadas de Kibana es la creación de mapas en tiempo real mediante Elastic Maps, lo cual resulta muy útil para poder monitorear en tiempo real la posición de cada uno de los vuelos.
+
+Además, proporciona herramientas para realizar análisis avanzados, como la creación de dashboards que combinan múltiples visualizaciones en una sola vista, lo que la hace más atractiva y brinda una mayor comprensión. 
+
+Al igual que en el caso de Elasticsearch, se añadió el servicio de Kibana al archivo de configuración de Docker.
+
+\subsection{Tráfico aéreo en tiempo real}
+Una vez configurados Elasticsearch y Kibana en Docker, en el consumer se crea una instancia de Elasticsearch para conectarse con el servidor e iniciar la indexación. Se verifica la existencia o no, del índice y si no existe se crea, como se muestra a continuación: 
+
+\begin{lstlisting}[style=python]
+# Configuracion de Elasticsearch
+ES_HOST = "http://localhost:9200"
+INDEX_NAME = "air_traffic"
+
+es = Elasticsearch([ES_HOST])
+if not es.indices.exists(index=INDEX_NAME):
+    mapping = {
+        "mappings": {
+            "properties": {
+                "location": {
+                    "type": "geo_point"
+                }
+            }
+        }
+    }
+    es.indices.create(index=INDEX_NAME, body=mapping)
+\end{lstlisting}
+
+Luego, se procede a enviar los datos a ElasticSearch utilizando la función \textit{send\_to\_elasticsearch}, la cual valida los datos del vuelo y crea un documento con los campos relevantes, entre ellos las coordenadas geográficas. El documento es enviado a ElasticSearch para su indexación.
+
+Una vez que los datos se encuentran en Elasticsearch, se utiliza Kibana para su visualización, herramienta a la cual se puede acceder en el navegador mediante: \url{http://localhost:5601/}. 
+
+Como se mencionó anteriormente, con Kibana se pueden crear diferentes visualizaciones. Y en este caso se tuvo en cuenta para las mismas, la altura promedio, la velocidad promedio, las localizaciones de los aviones y  los países con la mayor cantidad de vuelos activos en el momento. Además resulta de mucha ayuda para el viajero conocer cuáles son los aeropuertos o países con mayor número de vuelos en el día, por lo también se analizó esto.
+
+Para una mayor comprensión se creó un dashboard con todas estas visualizaciones como se muestra a continuación:
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=1.0\textwidth]{traffic.png}
+    \caption{Dashboard en tiempo real}
+\end{figure}
+
+\subsubsection{Predicción de retrasos}
+
+Cuando se trata de tráfico aéreo, uno de los puntos más importantes a analizar son los aviones que, ya sea por condiciones meteorológicas u otros factores, llegan retrasados a su destino. Por esta razón, se entrenó un modelo de Machine Learning para predecir dichos retrasos. Para la predicción,se obtuvieron datos adicionales de la API de la sección de "flights", los cuales proporcionan información sobre aeropuertos de salida y de llegada, así como tiempos estimados de salida y llegada. 
+
+Luego, con estos datos y con el objetivo de generar datos de retraso para entrenar el modelo, se calculó el tiempo que el vuelo debería demorar según la información de los aeropuertos. Posteriormente, se determinó la distancia desde la ubicación actual del avión hasta el aeropuerto de llegada, y utilizando la velocidad, se estimó el tiempo que debería demorar en llegar. Si la hora estimada de llegada es mayor en un rango superior a 15 minutos respecto a la hora programada, se considera que el avión tiene un retraso.
+
+Con el fin de predecir retrasos en el caso de no disponer de algunos de los datos mencionados anteriormente, se utilizaron para el modelo los siguientes datos: "icao24", "longitude", "latitude", "baro\_altitude", "on\_ground", "velocity", "vertical\_rate", "geo\_altitude", "firstSeen", "lastSeen", "estDepartureAirport" y "estArrivalAirport". Estos datos se emplearon para calcular el retraso, incluyendo latitudes y longitudes, el nombre del avión, entre otros. Posteriormente, se realizaron transformaciones a los datos para poder entrenar el modelo, dividiendo los datos en conjuntos de entrenamiento y prueba, se entrenó el modelo XGBClassifier y se guardó en un archivo pickle.
+
+El modelo XGBClassifier es una herramienta poderosa para predecir retrasos de vuelos en tiempo real ya que por una parte maneja de forma eficiente los valores faltantes y el ruido en los datos de tráfico aéreo. Además, es capaz de capturar relaciones no lineales entre múltiples factores interrelacionados, lo que resulta en una predicción más precisa de los retrasos. Este modelo también está optimizado para entrenar rápidamente en grandes volúmenes de datos. 
+
+Una vez guardado el modelo, se utilizó FastApi para implementar un servicio web que permite hacer predicciones en tiempo real. Se cargó el modelo guardado usando la biblioteca joblib y se definió un esquema de entrada utilizando pydantic para asegurar que los datos de entrada cumplan con la estructura esperada. Se creó una ruta en la API con el método POST que recibe los datos de entrada, los transforma en un formato adecuado y pasa estos datos al modelo para obtener una predicción. Finalmente, se devuelve la predicción como parte de la respuesta JSON.
+Este respuesta es incluida como otra capa del mapa usado en Kibana para la localización de los aviones, en este caso los aviones con retraso serán marcados en el mapa con otro color. 
+
+\section{Conclusiones}
+
+El desarrollo de este proyecto permitió implementar un sistema para la ingesta y almacenamiento de datos de tráfico aéreo en tiempo real utilizando tecnologías diseñadas para procesar grandes volúmenes de datos y transmitirlos en streaming, en lo que, la API de OpenSky Network jugó un papel fundamental para la obtención de los datos referentes al estado de las aeronaves a nivel global. 
+
+Para asegurar una ingesta de datos eficiente y escalable, se ha integrado Apache Kafka, cuya arquitectura distribuida y tolerante a fallos maneja el flujo constante de datos sin interrupciones. Gracias a Kafka, el sistema procesa y distribuye información sobre el tráfico aéreo de manera continua, garantizando que los datos estén siempre disponibles para su análisis y almacenamiento posteriores.
+
+La implementación de Docker y Docker Compose ha simplificado la configuración y despliegue de los servicios necesarios, permitiendo una implementación flexible y replicable en diversos entornos. Además, la integración de HDFS como sistema de almacenamiento distribuido ha proporcionado una solución para la preservación de datos históricos, asegurando su disponibilidad a largo plazo y facilitando el análisis retrospectivo.
+
+El monitoreo del sistema se ha optimizado mediante herramientas interactivas en la terminal y la interfaz web de Hadoop, permitiendo un seguimiento del estado del clúster y del procesamiento de datos. Estas herramientas facilitan la detección temprana de problemas y garantizan un funcionamiento óptimo del sistema.
+
+Dado que HDFS no es adecuado para consultas en tiempo real, se ha integrado Elasticsearch para indexar y buscar los datos de manera eficiente. Esta herramienta posibilita una visualización inmediata del estado de los vuelos y un análisis en tiempo real, mejorando la capacidad de monitoreo del sistema. 
+
+No solo se visualizaron los datos geoespaciales, sino que también se implementó un modelo de Machine Learning para la predicción de retrasos en los vuelos, así como otras visualizaciones que incluyen la velocidad y altura promedio de los vuelos en cada segundo así como los países con la mayor cantidad de vuelos en tiempo real.
+
+Todo esto, demuestra una vez más el papel que desempeña el BigData junto con todas sus herramientas para la resolución de problemas complejos. Su capacidad para procesar y analizar grandes volúmenes de datos en tiempo real no solo es clave en la aviación, sino también en muchas otras áreas, mejorando la eficiencia y la toma de decisiones.
+
 \newpage
 
 \begin{thebibliography}{9}
@@ -214,6 +305,17 @@ Kafka Python.
 Available at: \url{https://kafka-python.readthedocs.io/en/master/}.
 Accessed: December 2024.
 
+\bibitem{Elasticsearch}
+Elastic Documentation
+\textit{Elastic Documentation}
+Available at \url{https://www.elastic.co/docs}
+Accessed: January 2025.
+
+\bibitem{Kibana}
+Kibana Guide
+\textit{Kibana Guide}
+Available at \url{https://www.elastic.co/guide/en/kibana/current/index.html}
+Accessed: January 2025.
 \end{thebibliography}
 
 \end{document}
